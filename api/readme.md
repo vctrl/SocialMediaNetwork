@@ -43,6 +43,12 @@ POST /users/register
 
     response 200
 
+    // удалить друга
+    DELETE /friends/{user_id}
+
+    // отменить заявку
+    DELETE /friends/requests/{id}
+
 
 user {id, login, name, surname, age, sex, interests, city }
 
