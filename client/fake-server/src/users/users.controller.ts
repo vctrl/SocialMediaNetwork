@@ -1,17 +1,9 @@
-import {
-  Controller,
-  Get,
-  Post,
-  Body,
-  Patch,
-  Param,
-  Delete,
-  HttpException,
-} from '@nestjs/common';
+import { Controller, Get, Post, Body, Patch, Param, Delete, HttpException, Response } from '@nestjs/common';
 import { UsersService } from './users.service';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { LoginDto } from './dto/login.dto';
+import { Response as EResponse } from 'express';
 
 @Controller('users')
 export class UsersController {
@@ -23,12 +15,12 @@ export class UsersController {
   }
 
   @Post('login')
-  login(@Body() dto: LoginDto) {
-    const user = this.usersService.findByLogin(dto.login);
-    if (user.password !== dto.password)
-      return new HttpException('Wrong password', 403);
+  async login(@Body() dto: LoginDto, @Response() res: EResponse) {
+    const user = await this.usersService.findByLogin(dto.login);
+    if (!user || user.password !== dto.password) throw new HttpException('Wrong credentials', 403);
 
-    return user;
+    res.cookie('userId', user.id);
+    res.send(user);
   }
 
   @Get(':ids')
