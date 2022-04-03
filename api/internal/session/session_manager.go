@@ -4,15 +4,17 @@ import (
 	"context"
 	"crypto/rsa"
 	"github.com/SermoDigital/jose/crypto"
+	"github.com/dgrijalva/jwt-go"
 )
 
 type Session struct {
-	UserID uint32
-	ID     string
+	UserID string `json:"user_id"`
+	Login  string `json:"login"`
+	jwt.StandardClaims
 }
 
 type SessionManager interface {
-	Create(ctx context.Context) error
+	Create(ctx context.Context, userID, login string, expiresAt int64) (string, error)
 	Check(ctx context.Context) error
 	Destroy(ctx context.Context) error
 	DestroyAll(ctx context.Context) error
@@ -39,8 +41,22 @@ func NewSessionsJWTManager(privateKeyBytes, publicKeyBytes []byte) (SessionManag
 	}, nil
 }
 
-func (sm *SessionManagerJWT) Create(ctx context.Context) error {
-	return nil
+func (sm *SessionManagerJWT) Create(ctx context.Context, userID, login string, expiresAt int64) (string, error) {
+	sess := &Session{
+		UserID: userID,
+		Login:  login,
+		StandardClaims: jwt.StandardClaims{
+			ExpiresAt: expiresAt,
+		},
+	}
+
+	token := jwt.NewWithClaims(jwt.SigningMethodRS256, sess)
+	signed, err := token.SignedString(sm.privateKey)
+	if err != nil {
+		return "", err
+	}
+
+	return signed, nil
 }
 
 func (sm *SessionManagerJWT) Check(ctx context.Context) error {

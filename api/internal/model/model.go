@@ -2,12 +2,17 @@ package model
 
 import (
 	"context"
-	"github.com/google/uuid"
+	"errors"
 	"github.com/vctrl/SocialNetworkHighload/api/internal/db"
 	"github.com/vctrl/SocialNetworkHighload/api/internal/password"
 	"github.com/vctrl/SocialNetworkHighload/api/internal/session"
-	"time"
 )
+
+// afk for 15 min
+type LoginRequest struct {
+	Login    string `json:"login"`
+	Password string `json:"password"`
+}
 
 type RegisterRequest struct {
 	Login     string `json:"login"`
@@ -20,36 +25,51 @@ type RegisterRequest struct {
 	City      string `json:"city"`
 }
 
-type Model interface {
-	Register(ctx context.Context, r *RegisterRequest) error
-
-	GetUser(ctx context.Context) error
-	UpdateUser(ctx context.Context) error
-	DeleteUser(ctx context.Context) error
-
-	CreateSession(ctx context.Context) error
-	CheckSession(ctx context.Context) error
-	DeleteSession(ctx context.Context) error
-	DeleteAll(ctx context.Context) error
-
-	// TODO friends and friend requests
-	//AddFriend(ctx context.Context)
+type User struct {
+	ID        string `json:"id"`
+	Login     string `json:"login"`
+	Name      string `json:"name"`
+	Surname   string `json:"surname"`
+	Age       int    `json:"age"`
+	Sex       string `json:"sex"`
+	Interests string `json:"interests"`
+	City      string `json:"city"`
 }
 
-func New(users db.Users, privateKeyBytes, publicKeyBytes []byte) (Model, error) {
-	sm, err := session.NewSessionsJWTManager(privateKeyBytes, publicKeyBytes)
-	if err != nil {
-		return nil, err
-	}
+type Model interface {
+	Login(ctx context.Context, r *LoginRequest) (user *User, token string, err error)
+	Register(ctx context.Context, r *RegisterRequest) (id string, token string, err error)
+	Logout(ctx context.Context) error
+	LogoutAll(ctx context.Context) error
 
+	GetUserInfo(ctx context.Context) error
+	UpdateUserInfo(ctx context.Context) error
+	DeleteUser(ctx context.Context) error
+
+	GetFriends(ctx context.Context) error
+	SendFriendRequest(ctx context.Context) error
+	GetSentRequests(ctx context.Context) error
+	GetIncomeRequests(ctx context.Context) error
+	AcceptFriendRequest(ctx context.Context) error
+
+	DeleteFriend(ctx context.Context) error
+	CancelRequest(ctx context.Context) error
+}
+
+func New(users db.Users,
+	profiles db.Profiles,
+	friends db.Friends,
+	friendRequests db.FriendRequests,
+	sm session.SessionManager,
+	ph password.PasswordHasher) (Model, error) {
 	return &ModelImpl{
 		Users: users,
 		// todo
-		Profiles:       nil,
-		Friends:        nil,
-		FriendRequests: nil,
+		Profiles:       profiles,
+		Friends:        friends,
+		FriendRequests: friendRequests,
 		Sm:             sm,
-		Ph:             nil,
+		Ph:             ph,
 	}, nil
 }
 
@@ -64,29 +84,19 @@ type ModelImpl struct {
 	Ph password.PasswordHasher
 }
 
-func (m *ModelImpl) Register(ctx context.Context, r *RegisterRequest) error {
-	id := uuid.New()
-	passwordHash, err := m.Ph.HashPass(r.Password)
+func (m *ModelImpl) Logout(ctx context.Context) error {
+	return errors.New("not implemented")
+}
 
-	if err != nil {
-		return err
-	}
+func (m *ModelImpl) LogoutAll(ctx context.Context) error {
+	return errors.New("not implemented")
+}
 
-	dbUser := db.NewUser(id.String(), r.Login, passwordHash, time.Now())
-	err = m.Users.Add(ctx, dbUser)
-
-	if err != nil {
-		return err
-	}
-
+func (m *ModelImpl) GetUserInfo(ctx context.Context) error {
 	return nil
 }
 
-func (m *ModelImpl) GetUser(ctx context.Context) error {
-	return nil
-}
-
-func (m *ModelImpl) UpdateUser(ctx context.Context) error {
+func (m *ModelImpl) UpdateUserInfo(ctx context.Context) error {
 	return nil
 }
 
@@ -94,17 +104,30 @@ func (m *ModelImpl) DeleteUser(ctx context.Context) error {
 	return nil
 }
 
-func (m *ModelImpl) CreateSession(ctx context.Context) error {
-	return nil
-}
-func (m *ModelImpl) CheckSession(ctx context.Context) error {
+func (m *ModelImpl) GetFriends(ctx context.Context) error {
 	return nil
 }
 
-func (m *ModelImpl) DeleteSession(ctx context.Context) error {
+func (m *ModelImpl) SendFriendRequest(ctx context.Context) error {
 	return nil
 }
 
-func (m *ModelImpl) DeleteAll(ctx context.Context) error {
+func (m *ModelImpl) GetSentRequests(ctx context.Context) error {
+	return nil
+}
+
+func (m *ModelImpl) GetIncomeRequests(ctx context.Context) error {
+	return nil
+}
+
+func (m *ModelImpl) AcceptFriendRequest(ctx context.Context) error {
+	return nil
+}
+
+func (m *ModelImpl) DeleteFriend(ctx context.Context) error {
+	return nil
+}
+
+func (m *ModelImpl) CancelRequest(ctx context.Context) error {
 	return nil
 }

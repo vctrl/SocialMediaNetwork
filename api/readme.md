@@ -1,13 +1,13 @@
 
 // USERS
-POST /users/register
+POST /register
     request: { login, password, name, surname, age, sex, interests, city }
     response: user, 201
     
-    POST /users/login
+    POST /login
     
     request: { login, password }
-    response: user
+    response: {user_id, token}
     
     GET /users/{id1,id2,id3...}
 
@@ -24,7 +24,7 @@ POST /users/register
     response {[ user ]}
     
     // исходящие заявки
-    GET /friends/sent_requests
+    GET /friends/requests/sent
 
     response [user_id1, user_id2 ...] 
 
