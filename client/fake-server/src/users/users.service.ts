@@ -36,7 +36,7 @@ export class UsersService {
   }
 
   async getMany(ids: User['id'][]) {
-    return ids.map((id) => this.getOne(id));
+    return Promise.all(ids.map((id) => this.getOne(id)));
   }
 
   async findByLogin(login: User['login']) {
