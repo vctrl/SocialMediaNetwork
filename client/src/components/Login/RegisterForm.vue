@@ -1,98 +1,130 @@
 <script setup lang="ts">
-import { NButton, NDivider, NForm, NFormItemRow, NIcon, NInput, NInputNumber } from 'naive-ui';
-import { computed } from 'vue';
+import { AxiosError } from 'axios';
+import {
+  FormInst,
+  NButton,
+  NDivider,
+  NForm,
+  NFormItemRow,
+  NIcon,
+  NInput,
+  NInputNumber,
+  NSelect,
+  useNotification,
+} from 'naive-ui';
+import { SelectBaseOption } from 'naive-ui/lib/select/src/interface';
+import { ref } from 'vue';
+import { useRouter } from 'vue-router';
 
 import Icon from '@/components/Icon';
-import { Gender, User } from '@/types/entities';
-import { allValid, useFieldProps, useValidated, ValidationResult } from '@/use/validate';
+import { users } from '@/providers/api';
+import { User } from '@/types/entities';
+import { RulesFor } from '@/types/util';
+import { validateAsync } from '@/use/validate';
 
-const age = useValidated(18, (age): ValidationResult => {
-  if (age < 13) return { isValid: false, message: 'Users below 13 are not allowed to register' };
-  if (age > 100) return { isValid: false, message: 'You are joking, right?' };
-  return { isValid: true };
-});
-const city = useValidated(
-  '',
-  (city): ValidationResult => (city.length < 3 ? { isValid: false, message: 'Too short' } : { isValid: true }),
-);
-const interests = useValidated('', (interests): ValidationResult => ({ isValid: true }));
-const password = useValidated('', (password): ValidationResult => ({ isValid: true }));
-const login = useValidated('', (login): ValidationResult => ({ isValid: true }));
-const name = useValidated('', (name): ValidationResult => ({ isValid: true }));
-const sex = useValidated('MALE' as Gender, (sex): ValidationResult => ({ isValid: true }));
-const surname = useValidated('', (surname): ValidationResult => ({ isValid: true }));
+type RegisterModel = Omit<User, 'id'> & { password: string };
 
-const fieldProps = useFieldProps({ age, city, interests, login, name, password, sex, surname });
-const canSave = allValid([age, city, interests, login, name, password, sex, surname]);
+const notify = useNotification();
+const router = useRouter();
 
-const user = computed<Omit<User, 'id'> & { password: string }>(() => ({
-  age: age.value,
-  city: city.value,
-  interests: interests.value,
-  login: login.value,
-  name: name.value,
-  password: password.value,
-  sex: sex.value,
-  surname: surname.value,
-}));
+const trigger = ['input', 'blur', 'change'];
+const sexOptions: SelectBaseOption<User['sex']>[] = [
+  { label: 'Male', value: 'MALE' },
+  { label: 'Female', value: 'FEMALE' },
+];
+
+const form = ref<FormInst | null>(null);
+const user = ref<Partial<RegisterModel>>({});
+const rules: RulesFor<RegisterModel> = {
+  age: {
+    validator(_, age: number) {
+      if (typeof age !== 'number') return new Error('Age is required');
+      if (age < 13) return new Error('Minimum age to register is 13 years');
+      return true;
+    },
+    trigger,
+  },
+  city: { message: 'Must be from 5 to 50 latin characters', required: true, pattern: /^[\w\d\s.,-]{5,50}$/i, trigger },
+  interests: {
+    message: 'Must be from 5 to 250 latin characters',
+    required: true,
+    pattern: /^[\w\d\s.,-]{5,250}$/i,
+    trigger,
+  },
+  login: { message: 'Must be from 3 to 20 latin characters', required: true, pattern: /^\w{3,20}$/i, trigger },
+  name: { message: 'Must be from 2 to 20 latin characters', required: true, pattern: /^[\w\d\s.,-]{2,20}$/i, trigger },
+  password: {
+    validator(_, password: string) {
+      if (!password) return new Error('Password is required');
+      if (!password.match(/[a-z]/)) return new Error('At least 1 lowercase letter needed');
+      if (!password.match(/[A-Z]/)) return new Error('At least 1 uppercase letter needed');
+      if (!password.match(/\d/)) return new Error('At least 1 digit needed');
+      if (password.length < 8) return new Error('Minimum length is 8 symbols');
+      return true;
+    },
+    trigger,
+  },
+  sex: { message: 'Gender is required', required: true, trigger },
+  surname: {
+    message: 'Must be from 2 to 20 latin characters',
+    required: true,
+    pattern: /^[\w\d\s.,-]{2,20}$/i,
+    trigger,
+  },
+};
+
+async function submit() {
+  if (!form.value) return;
+
+  const errors = await validateAsync(form.value);
+  if (errors?.length ?? 0 > 0)
+    return notify.error({
+      title: 'Error',
+      description: 'The form has problems, resolve them before submitting it',
+      duration: 8000,
+    });
+
+  try {
+    await users.register(user.value as RegisterModel);
+    router.push('/login');
+  } catch (e) {
+    const err = e as AxiosError;
+    notify.error({ title: 'API error', description: err.response?.data?.message ?? err.message, duration: 8000 });
+  }
+}
 </script>
 
 <template>
-  <NForm label-placement="left" :label-width="80">
-    <NFormItemRow
-      label="First Name"
-      :feedback="fieldProps.name.feedback.value"
-      :validation-status="fieldProps.name.status.value"
-    >
-      <NInput v-model:value="name" placeholder="First Name" />
+  <NForm ref="form" label-placement="left" :label-width="80" :rules="rules" :model="user" :show-require-mark="false">
+    <NFormItemRow label="Gender" path="sex">
+      <NSelect v-model:value="user.sex" :options="sexOptions as any" />
     </NFormItemRow>
-    <NFormItemRow
-      label="Last Name"
-      :feedback="fieldProps.surname.feedback.value"
-      :validation-status="fieldProps.surname.status.value"
-    >
-      <NInput v-model:value="surname" placeholder="Last Name" />
+    <NFormItemRow label="First Name" path="name">
+      <NInput v-model:value="user.name" placeholder="John" />
     </NFormItemRow>
-    <NFormItemRow
-      label="Location"
-      :feedback="fieldProps.city.feedback.value"
-      :validation-status="fieldProps.city.status.value"
-    >
-      <NInput v-model:value="city" placeholder="Location" />
+    <NFormItemRow label="Last Name" path="surname">
+      <NInput v-model:value="user.surname" placeholder="Doe" />
     </NFormItemRow>
-    <NFormItemRow
-      label="Age"
-      :feedback="fieldProps.age.feedback.value"
-      :validation-status="fieldProps.age.status.value"
-    >
-      <NInputNumber v-model:value="age" class="full-width" />
+    <NFormItemRow label="Location" path="city">
+      <NInput v-model:value="user.city" placeholder="New York, United States" />
     </NFormItemRow>
-    <NFormItemRow
-      label="Interests"
-      :feedback="fieldProps.interests.feedback.value"
-      :validation-status="fieldProps.interests.status.value"
-    >
-      <NInput v-model:value="interests" placeholder="Interests" type="textarea" />
+    <NFormItemRow label="Age" path="age">
+      <NInputNumber v-model:value="user.age" class="full-width" placeholder="Full years" />
+    </NFormItemRow>
+    <NFormItemRow label="Interests" path="interests">
+      <NInput v-model:value="user.interests" placeholder="Web development, rocket-powered car soccer" type="textarea" />
     </NFormItemRow>
 
     <NDivider dashed />
 
-    <NFormItemRow
-      label="Username"
-      :feedback="fieldProps.login.feedback.value"
-      :validation-status="fieldProps.login.status.value"
-    >
-      <NInput v-model:value="login" placeholder="Username" />
+    <NFormItemRow label="Username" path="login">
+      <NInput v-model:value="user.login" placeholder="johndoe94" />
     </NFormItemRow>
-    <NFormItemRow
-      label="Password"
-      :feedback="fieldProps.password.feedback.value"
-      :validation-status="fieldProps.password.status.value"
-    >
-      <NInput v-model:value="password" placeholder="Password" type="password" />
+    <NFormItemRow label="Password" path="password">
+      <NInput v-model:value="user.password" placeholder="sup3rS3cr3t" type="password" />
     </NFormItemRow>
     <div class="row jc-center">
-      <NButton type="primary" icon-placement="right" :disabled="!canSave">
+      <NButton type="primary" icon-placement="right" @click="submit">
         Submit
         <template #icon>
           <NIcon><Icon>mdi mdi-account-plus</Icon></NIcon>

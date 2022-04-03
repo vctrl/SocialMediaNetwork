@@ -7,7 +7,8 @@ const api = axios.create({
 });
 
 export const users = {
-  register: async (data: User & { password: string }) => (await api.post<User>('users/register', data)).data,
+  register: async (data: Omit<User, 'id'> & { password: string }) =>
+    (await api.post<User>('users/register', data)).data,
   login: async (data: { login: User['login']; password: string }) => (await api.post<User>('users/login', data)).data,
   get: async (ids: User['id'][]) => (await api.get<User[]>(`users/${ids.join(',')}`)).data,
   edit: async (id: User['id'], data: Omit<Partial<User>, 'id'>) => (await api.put<User>(`users/${id}`, data)).data,

@@ -1,11 +1,16 @@
 <script setup lang="ts">
+import { darkTheme, NConfigProvider, NNotificationProvider } from 'naive-ui';
 import { RouterView } from 'vue-router';
 </script>
 
 <template>
-  <div class="fill-parent column ai-center jc-center">
-    <RouterView />
-  </div>
+  <NConfigProvider :theme="darkTheme">
+    <NNotificationProvider>
+      <div class="fill-parent column ai-center jc-center">
+        <RouterView />
+      </div>
+    </NNotificationProvider>
+  </NConfigProvider>
 </template>
 
 <style lang="scss">
