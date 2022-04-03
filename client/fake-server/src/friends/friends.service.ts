@@ -14,27 +14,44 @@ function getArrayOrCreate(map: Map<User['id'], User['id'][]>, id: User['id']) {
 
 @Injectable()
 export class FriendsService {
-  get(userId: User['id']) {
+  async get(userId: User['id']) {
     return getArrayOrCreate(friends, userId);
   }
 
-  createRequest(sourceUserId: User['id'], targetUserId: User['id']) {
+  async getRequestsSent(userId: User['id']) {
+    return getArrayOrCreate(requests, userId);
+  }
+
+  async getRequestsIncoming(userId: User['id']) {
+    return Array.from(requests.entries())
+      .filter(([_, ids]) => ids.indexOf(userId) !== -1)
+      .map(([sourceUserId]) => sourceUserId);
+  }
+
+  async createRequest(sourceUserId: User['id'], targetUserId: User['id']) {
     const userRequests = getArrayOrCreate(requests, sourceUserId);
-    if (userRequests.find((id) => id === targetUserId))
-      throw new Error('Request already exists');
+    if (userRequests.find((id) => id === targetUserId)) return;
 
     userRequests.push(targetUserId);
   }
 
-  acceptRequest(sourceUserId: User['id'], targetUserId: User['id']) {
+  async acceptRequest(sourceUserId: User['id'], targetUserId: User['id']) {
     const userRequests = getArrayOrCreate(requests, sourceUserId);
     const index = userRequests.findIndex((id) => id === targetUserId);
-    if (index === -1) throw new Error("Request doesn't exist");
+    if (index === -1) return;
+
+    await Promise.all([this.removeRequest(sourceUserId, targetUserId), this.create(sourceUserId, targetUserId)]);
+  }
+
+  async removeRequest(sourceUserId: User['id'], targetUserId: User['id']) {
+    const userRequests = getArrayOrCreate(requests, sourceUserId);
+    const index = userRequests.findIndex((id) => id === targetUserId);
+    if (index === -1) return;
 
     userRequests.splice(index, 1);
   }
 
-  create(userId1: User['id'], userId2: User['id']) {
+  async create(userId1: User['id'], userId2: User['id']) {
     const userFriends1 = getArrayOrCreate(friends, userId1);
     if (!userFriends1.find((id) => id === userId2)) userFriends1.push(userId2);
 
@@ -42,7 +59,7 @@ export class FriendsService {
     if (!userFriends2.find((id) => id === userId1)) userFriends2.push(userId1);
   }
 
-  remove(userId1: User['id'], userId2: User['id']) {
+  async remove(userId1: User['id'], userId2: User['id']) {
     const userFriends1 = getArrayOrCreate(friends, userId1);
     const index1 = userFriends1.findIndex((id) => id === userId2);
     if (index1 !== -1) userFriends1.splice(index1, 1);

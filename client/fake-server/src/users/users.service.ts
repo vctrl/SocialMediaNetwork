@@ -1,4 +1,4 @@
-import { Injectable } from '@nestjs/common';
+import { HttpException, Injectable } from '@nestjs/common';
 import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from '../../../src/types/entities';
@@ -8,7 +8,9 @@ const users = new Map<User['id'], User & { password: string }>();
 
 @Injectable()
 export class UsersService {
-  create(dto: CreateUserDto) {
+  async create(dto: CreateUserDto) {
+    if (await this.findByLogin(dto.login)) throw new HttpException('User with this login already exists', 400);
+
     const id = nextId++;
     users.set(id, {
       age: dto.age,
@@ -25,23 +27,23 @@ export class UsersService {
     return this.getOne(id);
   }
 
-  findAll() {
+  async findAll() {
     return Array.from(users.values());
   }
 
-  getOne(id: User['id']) {
+  async getOne(id: User['id']) {
     return users.get(id);
   }
 
-  getMany(ids: User['id'][]) {
-    return ids.map((id) => this.getOne(id));
+  async getMany(ids: User['id'][]) {
+    return Promise.all(ids.map((id) => this.getOne(id)));
   }
 
-  findByLogin(login: User['login']) {
+  async findByLogin(login: User['login']) {
     return Array.from(users.values()).find((user) => user.login === login);
   }
 
-  update(id: User['id'], dto: UpdateUserDto) {
+  async update(id: User['id'], dto: UpdateUserDto) {
     const user = users.get(id);
     for (const key in dto) {
       user[key] = dto[key];
@@ -50,7 +52,7 @@ export class UsersService {
     return user;
   }
 
-  remove(id: User['id']) {
+  async remove(id: User['id']) {
     users.delete(id);
   }
 }
