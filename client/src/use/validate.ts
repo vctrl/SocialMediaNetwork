@@ -1,4 +1,6 @@
 import { extendRef } from '@vueuse/core';
+import { FormInst } from 'naive-ui';
+import { FormValidateCallback } from 'naive-ui/lib/form/src/interface';
 import { computed, ComputedRef, Ref, ref, ShallowUnwrapRef } from 'vue';
 
 export interface ValidationResult {
@@ -15,6 +17,10 @@ interface FieldProps {
   status: ComputedRef<'success' | 'warning' | 'error' | undefined>;
   feedback: ComputedRef<string | undefined>;
 }
+
+export const validateAsync = (form: FormInst) =>
+  // eslint-disable-next-line @typescript-eslint/no-empty-function
+  new Promise<Parameters<FormValidateCallback>[0]>((resolve) => form.validate(resolve).catch(() => {}));
 
 /**
  * Create a ref that is validated through supplied function

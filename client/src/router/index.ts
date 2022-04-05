@@ -11,7 +11,7 @@ const routes: Array<RouteRecordRaw> = [
     component: HomeView,
   },
   {
-    path: '/login',
+    path: '/:tab(login|register)',
     name: 'login',
     component: LoginView,
   },
