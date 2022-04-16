@@ -10,6 +10,8 @@ export const users = {
   register: async (data: Omit<User, 'id'> & { password: string }) =>
     (await api.post<User>('users/register', data)).data,
   login: async (data: { login: User['login']; password: string }) => (await api.post<User>('users/login', data)).data,
+  logout: async () => (await api.post('users/logout')) as void,
+  me: async () => (await api.get<User>('users/me')).data,
   get: async (ids: User['id'][]) => (await api.get<User[]>(`users/${ids.join(',')}`)).data,
   edit: async (id: User['id'], data: Omit<Partial<User>, 'id'>) => (await api.put<User>(`users/${id}`, data)).data,
   remove: async (id: User['id']) => (await api.delete<void>(`users/${id}`)).data,

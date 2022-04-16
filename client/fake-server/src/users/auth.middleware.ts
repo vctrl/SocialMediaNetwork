@@ -1,8 +1,7 @@
 import { Injectable, NestMiddleware } from '@nestjs/common';
 import { Request, Response } from 'express';
-import { User } from '../../src/types/entities';
-import { app } from './main';
-import { UsersService } from './users/users.service';
+import { User } from '../../../src/types/entities';
+import { UsersService } from './users.service';
 
 declare global {
   // eslint-disable-next-line @typescript-eslint/no-namespace
@@ -15,9 +14,11 @@ declare global {
 
 @Injectable()
 export class AuthMiddleware implements NestMiddleware {
+  constructor(private readonly usersService: UsersService) {}
+
   async use(req: Request, res: Response, next: (error?: any) => void) {
     const userId = Number(req.cookies.userId);
-    if (userId && !isNaN(userId)) req.user = await app.get(UsersService).getOne(userId);
+    if (userId && !isNaN(userId)) req.user = await this.usersService.getOne(userId);
 
     next();
   }

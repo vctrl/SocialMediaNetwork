@@ -1,6 +1,6 @@
 import { Controller, Delete, Get, Param, Post, Request, UseGuards } from '@nestjs/common';
 import { Request as ERequest } from 'express';
-import { AuthGuard } from 'src/auth.guard';
+import { AuthGuard } from 'src/users/auth.guard';
 import { FriendsService } from './friends.service';
 
 @Controller('friends')
