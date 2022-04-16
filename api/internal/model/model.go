@@ -3,12 +3,11 @@ package model
 import (
 	"context"
 	"errors"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/db"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/password"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/session"
+	"github.com/vctrl/social-media-network/api/internal/db/mysql"
+	"github.com/vctrl/social-media-network/api/internal/password"
+	"github.com/vctrl/social-media-network/api/internal/session"
 )
 
-// afk for 15 min
 type LoginRequest struct {
 	Login    string `json:"login"`
 	Password string `json:"password"`
@@ -37,6 +36,7 @@ type User struct {
 }
 
 type Model interface {
+	// users
 	Login(ctx context.Context, r *LoginRequest) (user *User, token string, err error)
 	Register(ctx context.Context, r *RegisterRequest) (id string, token string, err error)
 	Logout(ctx context.Context) error
@@ -46,6 +46,7 @@ type Model interface {
 	UpdateUserInfo(ctx context.Context) error
 	DeleteUser(ctx context.Context) error
 
+	// friends
 	GetFriends(ctx context.Context) error
 	SendFriendRequest(ctx context.Context) error
 	GetSentRequests(ctx context.Context) error
@@ -56,12 +57,12 @@ type Model interface {
 	CancelRequest(ctx context.Context) error
 }
 
-func New(users db.Users,
-	profiles db.Profiles,
-	friends db.Friends,
-	friendRequests db.FriendRequests,
+func New(users mysql.Users,
+	profiles mysql.Profiles,
+	friends mysql.Friends,
+	friendRequests mysql.FriendRequests,
 	sm session.SessionManager,
-	ph password.PasswordHasher) (Model, error) {
+	ph password.PasswordHasher) Model {
 	return &ModelImpl{
 		Users: users,
 		// todo
@@ -70,14 +71,14 @@ func New(users db.Users,
 		FriendRequests: friendRequests,
 		Sm:             sm,
 		Ph:             ph,
-	}, nil
+	}
 }
 
 type ModelImpl struct {
-	Users          db.Users
-	Profiles       db.Profiles
-	Friends        db.Friends
-	FriendRequests db.FriendRequests
+	Users          mysql.Users
+	Profiles       mysql.Profiles
+	Friends        mysql.Friends
+	FriendRequests mysql.FriendRequests
 
 	Sm session.SessionManager
 

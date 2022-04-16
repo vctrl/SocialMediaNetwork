@@ -1,0 +1,24 @@
+{
+  "server": {
+    "listen_endpoint": "localhost:8080"
+  },
+  "mysql": {
+    "conn": "root:qwer1234@tcp(localhost:3306)/social-network"
+  },
+  "token": {
+    "public_key_path": "",
+    "private_key_path": ""
+  },
+  "logging": {
+    "level": "debug",
+    "encoding": "json",
+    "outputPaths": ["stdout", "/tmp/logs"],
+    "errorOutputPaths": ["stderr"],
+    "initialFields": {"foo": "bar"},
+    "encoderConfig": {
+      "messageKey": "message",
+      "levelKey": "level",
+      "levelEncoder": "lowercase"
+    }
+  }
+}

@@ -5,6 +5,11 @@ import (
 	"crypto/rsa"
 	"github.com/SermoDigital/jose/crypto"
 	"github.com/dgrijalva/jwt-go"
+	"github.com/pkg/errors"
+	"github.com/vctrl/social-media-network/api/internal/config"
+	"io/ioutil"
+	"log"
+	"time"
 )
 
 type Session struct {
@@ -23,16 +28,31 @@ type SessionManager interface {
 type SessionManagerJWT struct {
 	privateKey *rsa.PrivateKey
 	publicKey  *rsa.PublicKey
+	accessTTL  time.Duration
 }
 
-func NewSessionsJWTManager(privateKeyBytes, publicKeyBytes []byte) (SessionManager, error) {
+func FromConfig(cfg *config.Config) (SessionManager, error) {
+	publicKey, err := ioutil.ReadFile(cfg.Token.PublicKeyPath)
+	if err != nil {
+		log.Fatalf("failed to read public key: %v", err)
+	}
+
+	privateKey, err := ioutil.ReadFile(cfg.Token.PrivateKeyPath)
+	if err != nil {
+		log.Fatalf("failed to read private key: %v", err)
+	}
+
+	return NewSessionsJWTManager(privateKey, publicKey, cfg.Token.AccessTTL)
+}
+
+func NewSessionsJWTManager(privateKeyBytes, publicKeyBytes []byte, accessTTL time.Duration) (SessionManager, error) {
 	privateKey, err := crypto.ParseRSAPrivateKeyFromPEM(privateKeyBytes)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "parse rsa private key")
 	}
 	publicKey, err := crypto.ParseRSAPublicKeyFromPEM(publicKeyBytes)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "parse rsa public key")
 	}
 
 	return &SessionManagerJWT{
@@ -53,7 +73,7 @@ func (sm *SessionManagerJWT) Create(ctx context.Context, userID, login string, e
 	token := jwt.NewWithClaims(jwt.SigningMethodRS256, sess)
 	signed, err := token.SignedString(sm.privateKey)
 	if err != nil {
-		return "", err
+		return "", errors.Wrap(err, "sign token with private key")
 	}
 
 	return signed, nil

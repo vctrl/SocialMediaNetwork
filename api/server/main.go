@@ -1,86 +1,89 @@
 package main
 
 import (
-	"database/sql"
-	"github.com/qiangxue/fasthttp-routing"
+	"github.com/pkg/errors"
+	"github.com/spf13/viper"
 	"github.com/valyala/fasthttp"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/api"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/db"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/model"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/password"
-	"github.com/vctrl/SocialNetworkHighload/api/internal/session"
-	"io/ioutil"
+	"github.com/vctrl/social-media-network/api/internal/api"
+	"github.com/vctrl/social-media-network/api/internal/config"
+	"github.com/vctrl/social-media-network/api/internal/db/mysql"
+	"github.com/vctrl/social-media-network/api/internal/model"
+	"github.com/vctrl/social-media-network/api/internal/password"
+	"github.com/vctrl/social-media-network/api/internal/session"
 	"log"
-)
-
-const (
-	conn           = "root:qwer1234@tcp(localhost:3306)/social-network"
-	publicKeyPath  = ""
-	privateKeyPath = ""
+	"os"
+	"os/signal"
 )
 
 func main() {
-	dbConn, err := sql.Open("mysql", conn)
-
-	if err != nil {
-		log.Fatalf("failed to connect to db: %v", err)
+	if err := config.Init(); err != nil {
+		log.Fatalf("failed to init config: %v", err)
 	}
 
-	publicKey, err := ioutil.ReadFile(publicKeyPath)
+	var cfg config.Config
+	err := viper.Unmarshal(&cfg)
 	if err != nil {
-		log.Fatalf("failed to read public key: %v", err)
+		log.Fatalf("failed to unmarshal config: %v", err)
 	}
 
-	privateKey, err := ioutil.ReadFile(privateKeyPath)
+	logger, err := cfg.Logging.Build()
 	if err != nil {
-		log.Fatalf("failed to read private key: %v", err)
+		log.Fatalf("failed to init logger: %v", err)
 	}
 
-	users := db.NewUsersMySQL(dbConn)
-	profiles := db.NewProfilesMySQL(dbConn)
-	friends := db.NewFriendsMySQL(dbConn)
-	friendRequests := db.NewFriendRequestsMySQL(dbConn)
+	if err := run(&cfg); err != nil {
+		logger.Fatal("fail server start")
+	}
+}
 
-	sm, err := session.NewSessionsJWTManager(publicKey, privateKey)
+func run(cfg *config.Config) error {
+	sqlDB, err := mysql.FromConfig(cfg)
+
+	if err != nil {
+		return errors.WithMessage(err, "load sql config")
+	}
+
+	users := mysql.NewUsersMySQL(sqlDB)
+	profiles := mysql.NewProfilesMySQL(sqlDB)
+	friends := mysql.NewFriendsMySQL(sqlDB)
+	friendRequests := mysql.NewFriendRequestsMySQL(sqlDB)
+
+	sm, err := session.FromConfig(cfg)
+	if err != nil {
+		return errors.WithMessage(err, "load session manager from config")
+	}
+
 	ph := password.NewPasswordHasher()
 
-	if err != nil {
-		log.Fatalf("failed to init session manager: %v", err)
-	}
-
-	model, err := model.New(users, profiles, friends, friendRequests, sm, ph)
+	model := model.New(users, profiles, friends, friendRequests, sm, ph)
 
 	service := api.New(model)
 
-	router := routing.New()
+	router := service.RegisterHTTPEndpoints()
 
-	router.Post("/register", service.HandleRegister)
-
-	router.Post("/login", service.HandleLogin)
-
-	router.Get("/users/<ids>", service.HandleGetUsers)
-
-	router.Put("/users/<id>", service.HandleUpdateUser)
-
-	router.Delete("/users/<id>", service.HandleDeleteUser)
-
-	router.Get("/friends", service.HandleGetFriends)
-
-	router.Get("/friends/requests/sent", service.HandleGetSentRequests)
-
-	router.Get("/friends/requests", service.HandleGetIncomeRequests)
-
-	router.Post("/friends/requests/<id>", service.HandleSendFriendRequest)
-
-	router.Post("/friends/<id>/accept", service.HandleAcceptFriendRequest)
-
-	router.Delete("/friends/<id>", service.HandleDeleteFriend)
-
-	router.Delete("/friends/requests/{id}", service.HandleDeleteFriendRequest)
-
-	router.Group("/api")
-
-	if err = fasthttp.ListenAndServe(":8080", router.HandleRequest); err != nil {
-		log.Fatalf("failed to start server: %v", err)
+	server := fasthttp.Server{
+		Handler:      router.HandleRequest,
+		ReadTimeout:  cfg.Server.ReadTimeout,
+		WriteTimeout: cfg.Server.WriteTimeout,
 	}
+
+	errCh := make(chan error)
+	go func() {
+		if err := server.ListenAndServe(cfg.Server.ListenAddr); err != nil {
+			errCh <- errors.WithMessage(err, "server listen and serve")
+		}
+	}()
+
+	c := make(chan os.Signal, 1)
+	signal.Notify(c, os.Interrupt)
+
+	select {
+	case <-c:
+		server.Shutdown()
+	case err = <-errCh:
+		server.Shutdown()
+		return err
+	}
+
+	return nil
 }

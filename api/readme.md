@@ -1,6 +1,10 @@
 
 // USERS
-POST /register
+
+    GET /me
+    response: user
+
+    POST /register
     request: { login, password, name, surname, age, sex, interests, city }
     response: user, 201
     
@@ -17,6 +21,7 @@ POST /register
     DELETE /users/{id}
     response: 200 ok
 
+    POST /logout
 // FRIENDS
 
     // список друзей
