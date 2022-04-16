@@ -32,7 +32,7 @@ func main() {
 	}
 
 	if err := run(&cfg); err != nil {
-		logger.Fatal("fail server start")
+		logger.Fatal("failed to start server")
 	}
 }
 
@@ -40,7 +40,7 @@ func run(cfg *config.Config) error {
 	sqlDB, err := mysql.FromConfig(cfg)
 
 	if err != nil {
-		return errors.WithMessage(err, "load sql config")
+		return errors.WithMessage(err, "create sql connection from config")
 	}
 
 	users := mysql.NewUsersMySQL(sqlDB)
@@ -50,7 +50,7 @@ func run(cfg *config.Config) error {
 
 	sm, err := session.FromConfig(cfg)
 	if err != nil {
-		return errors.WithMessage(err, "load session manager from config")
+		return errors.WithMessage(err, "create session manager from config")
 	}
 
 	ph := password.NewPasswordHasher()
