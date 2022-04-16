@@ -3,7 +3,7 @@ import { AppController } from './app.controller';
 import { AppService } from './app.service';
 import { UsersModule } from './users/users.module';
 import { FriendsModule } from './friends/friends.module';
-import { AuthMiddleware } from './auth.middleware';
+import { AuthMiddleware } from './users/auth.middleware';
 
 @Module({
   imports: [UsersModule, FriendsModule],

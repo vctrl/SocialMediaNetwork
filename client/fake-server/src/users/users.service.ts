@@ -3,8 +3,23 @@ import { CreateUserDto } from './dto/create-user.dto';
 import { UpdateUserDto } from './dto/update-user.dto';
 import { User } from '../../../src/types/entities';
 
-let nextId = 1;
-const users = new Map<User['id'], User & { password: string }>();
+let nextId = 2;
+const users = new Map<User['id'], User & { password: string }>([
+  [
+    1,
+    {
+      id: 1,
+      login: 'user',
+      password: 'password',
+      name: 'John',
+      surname: 'Doe',
+      sex: 'MALE',
+      age: 22,
+      city: 'Moscow',
+      interests: 'Web development',
+    },
+  ],
+]);
 
 @Injectable()
 export class UsersService {
@@ -53,6 +68,15 @@ export class UsersService {
   }
 
   async remove(id: User['id']) {
+    const user = await this.getOne(id);
+    if (!user) return null;
+
     users.delete(id);
+    return user;
+  }
+
+  publicData(user: User & { password?: string }) {
+    const { password, ...publicUser } = user;
+    return publicUser;
   }
 }
