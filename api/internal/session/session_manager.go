@@ -7,6 +7,7 @@ import (
 	"github.com/dgrijalva/jwt-go"
 	"github.com/pkg/errors"
 	"github.com/vctrl/social-media-network/api/internal/config"
+	"github.com/xhit/go-str2duration/v2"
 	"io/ioutil"
 	"log"
 	"time"
@@ -42,7 +43,12 @@ func FromConfig(cfg *config.Config) (SessionManager, error) {
 		log.Fatalf("failed to read private key: %v", err)
 	}
 
-	return NewSessionsJWTManager(privateKey, publicKey, cfg.Token.AccessTTL)
+	ttl, err := str2duration.ParseDuration(cfg.Token.AccessTTL)
+	if err != nil {
+		return nil, errors.Wrap(err, "failed to parse access ttl")
+	}
+
+	return NewSessionsJWTManager(privateKey, publicKey, ttl)
 }
 
 func NewSessionsJWTManager(privateKeyBytes, publicKeyBytes []byte, accessTTL time.Duration) (SessionManager, error) {
