@@ -17,7 +17,7 @@
     "change-case": "^4.1.2",
     "dayjs": "^1.11.0",
     "pinia": "^2.0.13",
-    "sass": "^1.49.11",
+    "sass": "^1.55.0",
     "sass-loader": "^12.6.0",
     "serve": "^13.0.2",
     "socket.io-client": "^4.4.1",
